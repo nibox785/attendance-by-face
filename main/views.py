@@ -19,7 +19,8 @@ def home(request):
 role_to_dashboard = {
     'Admin': 'admin_dashboard',
     'Lecturer': 'lecturer_dashboard',
-    'Staff': 'staff_dashboard'
+    'Staff': 'lecturer_dashboard',  # Staff dùng chung dashboard với Lecturer
+    'Faculty': 'lecturer_dashboard'  # Faculty cũng dùng Lecturer dashboard
 }
 
 

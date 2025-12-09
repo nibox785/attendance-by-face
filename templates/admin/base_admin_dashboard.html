@@ -6,11 +6,21 @@
     <meta charset="utf-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Cổng thông tin nội bộ</title>
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static '' %}assets/images/favicon.png"/>
-    <link href="{% static '' %}dist/css/style.min.css" rel="stylesheet"/>
+    <title>Cổng thông tin quản trị - UTH</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets/images/favicon_uth.png' %}"/>
+    <link href="{% static 'assets/css/bootstrap.min.css' %}" rel="stylesheet"/>
+    <link href="{% static 'assets/css/style.css' %}" rel="stylesheet"/>
+    <link href="{% static 'assets/css/dashboard.css' %}" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+    <script>
+        // Translation service stub - must be loaded before any other scripts
+        window.translationService = {
+            translate: function(key) { return key; }
+        };
+    </script>
     <link rel="stylesheet" type="text/css"
-          href="{% static '' %}assets/libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css"/>
+          href="{% static 'assets/libs/bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css' %}"/>
     {% block css %}
     {% endblock %}
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -35,11 +45,11 @@
             <div class="navbar-header" data-logobg="skin5">
                 <a class="navbar-brand" href="{% url 'admin_dashboard' %}">
                     <b class="logo-icon ps-2">
-                        <img src="{% static '' %}assets/images/favicon.png" alt="homepage" class="light-logo"
+                        <img src="{% static 'assets/images/favicon_uth.png' %}" alt="UTH Logo" class="light-logo"
                              width="25"/>
                     </b>
                     <span class="logo-text ms-2">
-                            <img src="{% static '' %}assets/images/logo-text.png" alt="homepage" class="light-logo"/>
+                            <img src="{% static 'assets/images/logo_uth.png' %}" alt="UTH" class="light-logo" height="30"/>
                         </span>
                 </a>
                 <a class="nav-toggler waves-effect waves-light d-block d-md-none" href="#">
@@ -50,7 +60,7 @@
                 <ul class="navbar-nav float-start me-auto">
                     <li class="nav-item d-none d-lg-block">
                             <span class="nav-link sidebartoggler waves-effect waves-light"
-                                  Fdata-sidebartype="mini-sidebar">
+                                  data-sidebartype="mini-sidebar">
                                 <i class="mdi mdi-menu font-24"></i>
                             </span>
                     </li>
@@ -58,29 +68,23 @@
                 <ul class="navbar-nav float-end">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark pro-pic" href="#"
-                           id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <img src="{% static '' %}assets/images/users/1.jpg" alt="user" class="rounded-circle"
+                           id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <img src="{% static 'assets/images/users/1.jpg' %}" alt="user" class="rounded-circle"
                                  width="31"/>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end user-dd animated" aria-labelledby="navbarDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{% url 'admin_profile' %}">
-                                    <i class="mdi mdi-account me-1 ms-1"></i>Quản lý hồ sơ
-                                </a>
-                                <div class="dropdown-divider"></div>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'admin_change_password' %}">
-                                    <i class="mdi mdi-settings me-1 ms-1"></i>Đổi mật khẩu
-                                </a>
-                                <div class="dropdown-divider"></div>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'logout' %}">
-                                    <i class="fa fa-power-off me-1 ms-1"></i>Đăng xuất
-                                </a>
-                            </li>
-                        </ul>
+                        <div class="dropdown-menu dropdown-menu-right user-dd animated" aria-labelledby="navbarDropdown">
+                            <a class="dropdown-item" href="{% url 'admin_profile' %}">
+                                <i class="mdi mdi-account me-1 ms-1"></i>Quản lý hồ sơ
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'admin_change_password' %}">
+                                <i class="mdi mdi-settings me-1 ms-1"></i>Đổi mật khẩu
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{% url 'logout' %}">
+                                <i class="fa fa-power-off me-1 ms-1"></i>Đăng xuất
+                            </a>
+                        </div>
                     </li>
                 </ul>
             </div>
@@ -146,19 +150,17 @@
             {% endblock %}
         </div>
         <footer class="footer text-center">
-            Attendance system was built and developed by HUTECH students
+            Attendance system was built and developed by UTH students
         </footer>
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="{% static '' %}assets/libs/jquery/dist/jquery.min.js"></script>
-<script src="{% static '' %}assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{% static '' %}assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
-<script src="{% static '' %}assets/extra-libs/sparkline/sparkline.js"></script>
-<script src="{% static '' %}dist/js/waves.js"></script>
-<script src="{% static '' %}dist/js/sidebarmenu.js"></script>
-<script src="{% static '' %}dist/js/custom.min.js"></script>
-<script src="{% static '' %}assets/libs/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
+<script src="{% static 'assets/js/jquery-3.3.1.min.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+<script src="{% static 'assets/js/waves.js' %}"></script>
+<script src="{% static 'assets/js/sidebarmenu.js' %}"></script>
+<script src="{% static 'assets/js/custom.min.js' %}"></script>
 <script>
     jQuery("#birthday, #begin_date, #end_date").datepicker({
         autoclose: true,

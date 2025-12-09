@@ -113,7 +113,7 @@
 {% endblock %}
 
 {% block js %}
-    <script src="{% static '' %}assets/js/manage-student.js"></script>
+    <script src="{% static 'assets/js/manage-student.js' %}"></script>
     <script>
         function confirmDeleteStudent(studentId) {
             let deleteUrl = "{% url 'admin_student_delete' '1' %}".replace('1', studentId);

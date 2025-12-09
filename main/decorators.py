@@ -17,7 +17,9 @@ def admin_required(view_func):
 def lecturer_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        if 'Lecturer' in request.session.get('staff_role', []):
+        staff_roles = request.session.get('staff_role', [])
+        # Cho phép Lecturer, Staff và Faculty truy cập
+        if any(role in staff_roles for role in ['Lecturer', 'Staff', 'Faculty']):
             return view_func(request, *args, **kwargs)
         else:
             return redirect('error_403')
