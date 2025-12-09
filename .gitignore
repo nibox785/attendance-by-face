@@ -11,8 +11,16 @@ ENV/
 *.log 
 db.sqlite3 
 db.sqlite3-journal 
+
+# Static files collected (deploy only)
+/static/
+/media/
+
+# IDE
 .vscode/ 
 .idea/ 
+
+# OS
 .DS_Store 
 Thumbs.db 
 *.pb 
