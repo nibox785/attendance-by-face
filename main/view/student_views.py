@@ -124,6 +124,7 @@ def student_change_password_view(request):
 def student_checkpoint_view(request):
     id_student = request.session['id_student']
 
+    # Chỉ lấy các lớp mà sinh viên này đăng ký
     student_classes = Classroom.objects.filter(
         students__id_student=id_student,
     ).order_by('day_of_week_begin', 'begin_time')
@@ -134,27 +135,37 @@ def student_checkpoint_view(request):
 
     attendance_scores = []
     for classroom in student_classes:
+        # Đếm số buổi vắng (status=1)
         absent_count = Attendance.objects.filter(
             attendance_status=1,
             id_student=id_student,
             id_classroom=classroom.id_classroom,
         ).count()
 
+        # Đếm số buổi có mặt đúng giờ (status=2)
         present_count = Attendance.objects.filter(
             attendance_status=2,
             id_student=id_student,
             id_classroom=classroom.id_classroom,
         ).count()
 
+        # Đếm số buổi đi muộn (status=3)
         late_count = Attendance.objects.filter(
             attendance_status=3,
             id_student=id_student,
             id_classroom=classroom.id_classroom,
         ).count()
 
+        # Tổng số buổi đã điểm danh
         total_number_attendance = absent_count + late_count + present_count
         total_attendance_present = late_count + present_count
-        total_attendance_percentage = round((((absent_count * 0) + (late_count * 0.5) + present_count) / 9) * 3, 2)
+        
+        # Tính điểm chuyên cần: Vắng=0đ, Muộn=0.5đ, Có mặt=1đ
+        # Công thức: ((absent*0 + late*0.5 + present*1) / tổng_buổi) * 3 điểm
+        if total_number_attendance > 0:
+            total_attendance_percentage = round((((absent_count * 0) + (late_count * 0.5) + present_count) / total_number_attendance) * 3, 2)
+        else:
+            total_attendance_percentage = 0
 
         attendance_scores.append({
             'classroom': classroom,
@@ -166,8 +177,9 @@ def student_checkpoint_view(request):
             'total_attendance_percentage': total_attendance_percentage,
         })
 
-        paginator = Paginator(attendance_scores, classroom_per_page)
-        page = paginator.get_page(page_number)
+    # Phân trang NGOÀI vòng lặp
+    paginator = Paginator(attendance_scores, classroom_per_page)
+    page = paginator.get_page(page_number)
 
     context = {
         'attendance_scores': page,
@@ -198,10 +210,23 @@ def student_list_classroom_view(request):
 @student_required
 def student_attendance_history_view(request, classroom_id):
     id_student = request.session.get('id_student')
-    classroom = Classroom.objects.get(pk=classroom_id)
+    
+    # Kiểm tra xem sinh viên có thuộc lớp này không
+    try:
+        classroom = Classroom.objects.get(
+            pk=classroom_id,
+            students__id_student=id_student  # CHỈ lấy lớp mà sinh viên này đăng ký
+        )
+    except Classroom.DoesNotExist:
+        # Sinh viên không có quyền xem lớp này
+        messages.error(request, 'Bạn không có quyền xem lịch sử điểm danh của lớp này.')
+        return redirect('student_list_classroom')
+    
+    # Chỉ lấy bản ghi điểm danh của sinh viên này trong lớp này
     students_attendance = Attendance.objects.filter(
         id_student=id_student,
-        id_classroom=classroom)
+        id_classroom=classroom
+    ).order_by('-check_in_time')  # Sắp xếp mới nhất trước
 
     context = {
         'students_attendance': students_attendance,

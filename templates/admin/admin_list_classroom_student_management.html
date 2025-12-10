@@ -111,3 +111,24 @@
         </div>
     </div>
 {% endblock %}
+
+{% block js %}
+    <!-- DataTables -->
+    <script src="{% static 'assets/libs/datatables/media/js/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.js' %}"></script>
+    <script>
+        $(document).ready(function() {
+            $('.table').DataTable({
+                "paging": false,
+                "searching": true,
+                "ordering": true,
+                "info": false,
+                "language": {
+                    "search": "Tìm kiếm:",
+                    "zeroRecords": "Không tìm thấy dữ liệu",
+                    "emptyTable": "Không có dữ liệu"
+                }
+            });
+        });
+    </script>
+{% endblock %}

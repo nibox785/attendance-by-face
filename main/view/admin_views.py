@@ -60,6 +60,7 @@ class AddBlog(SuccessMessageMixin, CreateView, ListView):
     model = BlogPost
     template_name = "admin/admin_notification_management.html"
     context_object_name = 'blog_posts'
+    success_message = "Thêm thông báo thành công!"
 
     def get_success_url(self):
         return reverse('admin_notification_view')
@@ -68,7 +69,17 @@ class AddBlog(SuccessMessageMixin, CreateView, ListView):
         context = super().get_context_data(**kwargs)
         context['blog_posts'] = BlogPost.objects.all()
         context['edit_form'] = EditBlogForm()
+        # Không truyền form.media vào context để tránh lỗi
+        # CKEditor sẽ được load trực tiếp từ CDN trong template
         return context
+    
+    def form_valid(self, form):
+        messages.success(self.request, 'Thêm thông báo thành công!')
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, f'Lỗi: {form.errors}')
+        return super().form_invalid(form)
 
 
 class BlogPostDeleteView(View):
@@ -101,14 +112,7 @@ class EditBlogView(View):
 @admin_required
 def admin_dashboard_view(request):
     blog_posts = BlogPost.objects.all()
-
     return render(request, 'admin/admin_home.html', {'blog_posts': blog_posts})
-
-
-@admin_required
-def admin_notification_view(request):
-    blog_posts = BlogPost.objects.all()
-    return render(request, 'admin/admin_notification_management.html', {'blog_posts': blog_posts})
 
 
 @admin_required
@@ -154,6 +158,7 @@ def admin_change_password_view(request):
 
 
 @admin_required
+@admin_required
 def admin_student_management_view(request):
     students = StudentInfo.objects.all()
     student_per_page = 10
@@ -169,24 +174,41 @@ def admin_student_management_view(request):
 @admin_required
 def admin_student_add(request):
     if request.method == 'POST':
-        id_student = request.POST['id_student']
-        student_name = request.POST['student_name']
-        email = request.POST['email']
-        phone = request.POST['phone']
-        address = request.POST['address']
-        birthday = datetime.strptime(request.POST['birthday'], '%d/%m/%Y').date()
-
-        PathImageFolder = request.POST['PathImageFolder']
-        password = make_password(request.POST['id_student'])
-        student = StudentInfo(id_student=id_student,
-                              student_name=student_name,
-                              email=email, phone=phone,
-                              address=address,
-                              birthday=birthday,
-                              PathImageFolder=PathImageFolder,
-                              password=password)
-        student.save()
-        messages.success(request, 'Thêm sinh viên thành công.')
+        try:
+            id_student = request.POST['id_student'].strip()
+            
+            # Validation
+            if len(id_student) > 10:
+                messages.error(request, f'Mã sinh viên quá dài! Tối đa 10 ký tự (bạn nhập {len(id_student)} ký tự)')
+                return redirect('admin_student_management')
+            
+            if StudentInfo.objects.filter(id_student=id_student).exists():
+                messages.error(request, f'Mã sinh viên {id_student} đã tồn tại!')
+                return redirect('admin_student_management')
+            
+            student_name = request.POST['student_name']
+            email = request.POST['email']
+            phone = request.POST['phone']
+            address = request.POST['address']
+            birthday = datetime.strptime(request.POST['birthday'], '%d/%m/%Y').date()
+            PathImageFolder = request.POST['PathImageFolder']
+            password = make_password(request.POST['id_student'])
+            
+            student = StudentInfo(
+                id_student=id_student,
+                student_name=student_name,
+                email=email, 
+                phone=phone,
+                address=address,
+                birthday=birthday,
+                PathImageFolder=PathImageFolder,
+                password=password
+            )
+            student.save()
+            messages.success(request, 'Thêm sinh viên thành công.')
+        except Exception as e:
+            messages.error(request, f'Lỗi: {str(e)}')
+        
         return redirect('admin_student_management')
     return render(request, 'admin/modal-popup/popup_add_student.html')
 
@@ -196,14 +218,42 @@ def admin_student_edit(request, id_student):
     student = StudentInfo.objects.get(id_student=id_student)
     context = {'student': student}
     if request.method == 'POST':
+        print("=" * 80)
+        print("🔧 ADMIN STUDENT EDIT - DEBUG INFO")
+        print("=" * 80)
+        print(f"📝 Request Method: {request.method}")
+        print(f"🆔 Student ID from URL: {id_student}")
+        print(f"📊 POST Data: {dict(request.POST)}")
+        
+        # Store old values for comparison
+        old_name = student.student_name
+        old_email = student.email
+        
+        # Update fields
         student.student_name = request.POST['student_name_edit']
         student.email = request.POST['email_edit']
         student.phone = request.POST['phone_edit']
         student.address = request.POST['address_edit']
         student.birthday = datetime.strptime(request.POST['birthday_edit'], '%d/%m/%Y').date()
         student.PathImageFolder = request.POST['PathImageFolder_edit']
-        print(request.POST['student_name_edit'])
+        
+        print(f"\n🔄 CHANGES DETECTED:")
+        print(f"   Name: '{old_name}' → '{student.student_name}'")
+        print(f"   Email: '{old_email}' → '{student.email}'")
+        
+        # Save to database
+        print(f"\n💾 Calling student.save()...")
         student.save()
+        print(f"✅ Save completed!")
+        
+        # Verify by reloading from database
+        reloaded = StudentInfo.objects.get(id_student=id_student)
+        print(f"\n🔍 VERIFICATION (reloaded from DB):")
+        print(f"   Name in DB: '{reloaded.student_name}'")
+        print(f"   Email in DB: '{reloaded.email}'")
+        print(f"   Match: {'✅ YES' if reloaded.student_name == student.student_name else '❌ NO'}")
+        print("=" * 80)
+        
         messages.success(request, 'Thay đổi thông tin thành công.')
         return redirect('admin_student_management')
     return render(request, 'admin/modal-popup/popup_edit_student.html', context)
@@ -313,12 +363,39 @@ def admin_lecturer_edit(request, id_staff):
     lecturer = StaffInfo.objects.get(id_staff=id_staff)
     context = {'staff': lecturer}
     if request.method == 'POST':
+        print("=" * 80)
+        print("👨‍🏫 ADMIN LECTURER EDIT - DEBUG INFO")
+        print("=" * 80)
+        print(f"📝 Request Method: {request.method}")
+        print(f"🆔 Staff ID: {id_staff}")
+        print(f"📊 POST Data: {dict(request.POST)}")
+        
+        # Store old values
+        old_name = lecturer.staff_name
+        old_email = lecturer.email
+        
         lecturer.staff_name = request.POST['lecturer_name']
         lecturer.email = request.POST['email']
         lecturer.phone = request.POST['phone']
         lecturer.address = request.POST['address']
         lecturer.birthday = datetime.strptime(request.POST['birthday'], '%d/%m/%Y').date()
+        
+        print(f"\n🔄 CHANGES DETECTED:")
+        print(f"   Name: '{old_name}' → '{lecturer.staff_name}'")
+        print(f"   Email: '{old_email}' → '{lecturer.email}'")
+        
+        print(f"\n💾 Calling lecturer.save()...")
         lecturer.save()
+        print(f"✅ Save completed!")
+        
+        # Verify
+        reloaded = StaffInfo.objects.get(id_staff=id_staff)
+        print(f"\n🔍 VERIFICATION (reloaded from DB):")
+        print(f"   Name in DB: '{reloaded.staff_name}'")
+        print(f"   Email in DB: '{reloaded.email}'")
+        print(f"   Match: {'✅ YES' if reloaded.staff_name == lecturer.staff_name else '❌ NO'}")
+        print("=" * 80)
+        
         messages.success(request, 'Thay đổi thông tin thành công.')
         return redirect('admin_lecturer_management')
     return render(request, 'admin/modal-popup/popup_edit_lecturer.html', context)
@@ -348,8 +425,13 @@ def admin_schedule_management_view(request):
     paginator = Paginator(schedule, schedule_per_page)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
+    
+    # Lấy danh sách giảng viên (role id = 3 là Lecturer)
+    lecturers = StaffInfo.objects.filter(staffrole__role__id=3)
+    
     context = {
         'list_schedules': page,
+        'lecturers': lecturers,
     }
 
     return render(request, 'admin/admin_schedule_management.html', context)
@@ -358,22 +440,51 @@ def admin_schedule_management_view(request):
 @admin_required
 def admin_schedule_add(request):
     if request.method == 'POST':
-        name = request.POST['name']
-        begin_date = datetime.strptime(request.POST['begin_date'], '%d/%m/%Y').date()
-        end_date = datetime.strptime(request.POST['end_date'], '%d/%m/%Y').date()
-        day_of_week_begin = request.POST['day_of_week_begin']
-        begin_time = request.POST['begin_time']
-        end_time = request.POST['end_time']
-        id_lecturer = request.POST['id_lecturer']
-        schedule = Classroom(name=name,
-                             begin_date=begin_date, end_date=end_date,
-                             day_of_week_begin=day_of_week_begin,
-                             begin_time=begin_time,
-                             end_time=end_time,
-                             id_lecturer_id=id_lecturer)
-        schedule.save()
-        messages.success(request, 'Thêm Thời Khóa Biểu thành công.')
-        return redirect('admin_schedule_management')
+        try:
+            name = request.POST['name']
+            begin_date = datetime.strptime(request.POST['begin_date'], '%d/%m/%Y').date()
+            end_date = datetime.strptime(request.POST['end_date'], '%d/%m/%Y').date()
+            day_of_week_begin = request.POST['day_of_week_begin']
+            
+            # Parse time strings properly
+            begin_time_str = request.POST['begin_time'].strip()
+            end_time_str = request.POST['end_time'].strip()
+            
+            # Handle both HH:MM and HH:MM:SS formats
+            if ':' in begin_time_str:
+                time_parts = begin_time_str.split(':')
+                begin_time = datetime.strptime(begin_time_str, '%H:%M:%S' if len(time_parts) == 3 else '%H:%M').time()
+            else:
+                raise ValueError("Định dạng thời gian không hợp lệ cho 'Thời gian bắt đầu'. Vui lòng nhập theo định dạng HH:MM")
+                
+            if ':' in end_time_str:
+                time_parts = end_time_str.split(':')
+                end_time = datetime.strptime(end_time_str, '%H:%M:%S' if len(time_parts) == 3 else '%H:%M').time()
+            else:
+                raise ValueError("Định dạng thời gian không hợp lệ cho 'Thời gian kết thúc'. Vui lòng nhập theo định dạng HH:MM")
+            
+            id_lecturer = request.POST['id_lecturer']
+            
+            schedule = Classroom(name=name,
+                                 begin_date=begin_date, end_date=end_date,
+                                 day_of_week_begin=day_of_week_begin,
+                                 begin_time=begin_time,
+                                 end_time=end_time,
+                                 id_lecturer_id=id_lecturer)
+            schedule.save()
+            messages.success(request, 'Thêm Thời Khóa Biểu thành công.')
+            # Refresh lại trang hiện tại sau khi lưu
+            return redirect(request.path)
+            
+        except ValueError as e:
+            messages.error(request, f'Lỗi: {str(e)}')
+            # Giữ nguyên trang để sửa lại
+            return redirect(request.path)
+        except Exception as e:
+            messages.error(request, f'Có lỗi xảy ra khi thêm lịch học: {str(e)}')
+            # Giữ nguyên trang để sửa lại
+            return redirect(request.path)
+    
     return render(request, 'admin/modal-popup/popup_add_schedule.html')
 
 
@@ -382,16 +493,76 @@ def admin_schedule_edit(request, id_classroom):
     schedule = Classroom.objects.get(id_classroom=id_classroom)
     context = {'schedule': schedule}
     if request.method == 'POST':
-        schedule.name = request.POST['name']
-        schedule.begin_date = datetime.strptime(request.POST['begin_date'], '%d/%m/%Y').date()
-        schedule.end_date = datetime.strptime(request.POST['end_date'], '%d/%m/%Y').date()
-        schedule.day_of_week_begin = request.POST['day_of_week_begin']
-        schedule.begin_time = request.POST['begin_time']
-        schedule.end_time = request.POST['end_time']
-        schedule.id_lecturer_id = request.POST['lecturer_name']
-        schedule.save()
-        messages.success(request, 'Thay đổi thông tin thành công.')
-        return redirect('admin_schedule_management')
+        try:
+            print("=" * 80)
+            print("📅 ADMIN SCHEDULE EDIT - DEBUG INFO")
+            print("=" * 80)
+            print(f"📝 Request Method: {request.method}")
+            print(f"🆔 Classroom ID: {id_classroom}")
+            print(f"📊 POST Data: {dict(request.POST)}")
+            
+            # Store old values
+            old_name = schedule.name
+            old_lecturer = schedule.id_lecturer_id
+            
+            schedule.name = request.POST['name']
+            schedule.begin_date = datetime.strptime(request.POST['begin_date'], '%d/%m/%Y').date()
+            schedule.end_date = datetime.strptime(request.POST['end_date'], '%d/%m/%Y').date()
+            schedule.day_of_week_begin = request.POST['day_of_week_begin']
+            
+            # Parse time fields (format: HH:MM hoặc HH:MM:SS)
+            begin_time_str = request.POST['begin_time'].strip()
+            end_time_str = request.POST['end_time'].strip()
+            
+            # Convert to time object
+            if ':' in begin_time_str:
+                time_parts = begin_time_str.split(':')
+                schedule.begin_time = datetime.strptime(begin_time_str, '%H:%M:%S' if len(time_parts) == 3 else '%H:%M').time()
+            else:
+                raise ValueError('Định dạng thời gian bắt đầu không hợp lệ')
+                
+            if ':' in end_time_str:
+                time_parts = end_time_str.split(':')
+                schedule.end_time = datetime.strptime(end_time_str, '%H:%M:%S' if len(time_parts) == 3 else '%H:%M').time()
+            else:
+                raise ValueError('Định dạng thời gian kết thúc không hợp lệ')
+            
+            schedule.id_lecturer_id = request.POST['id_lecturer']
+            
+            print(f"\n🔄 CHANGES DETECTED:")
+            print(f"   Class Name: '{old_name}' → '{schedule.name}'")
+            print(f"   Lecturer ID: '{old_lecturer}' → '{schedule.id_lecturer_id}'")
+            
+            print(f"\n💾 Calling schedule.save()...")
+            schedule.save()
+            print(f"✅ Save completed!")
+            
+            # Verify by reloading
+            reloaded = Classroom.objects.get(id_classroom=id_classroom)
+            print(f"\n🔍 VERIFICATION (reloaded from DB):")
+            print(f"   Name in DB: '{reloaded.name}'")
+            print(f"   Lecturer ID in DB: '{reloaded.id_lecturer_id}'")
+            print(f"   Match: {'✅ YES' if reloaded.id_lecturer_id == schedule.id_lecturer_id else '❌ NO'}")
+            print("=" * 80)
+            
+            # Nếu là AJAX request, trả về JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Thay đổi thông tin thành công.'
+                })
+            
+            messages.success(request, 'Thay đổi thông tin thành công.')
+            return redirect('admin_schedule_management')
+            
+        except ValueError as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Lỗi: {str(e)}'})
+            messages.error(request, f'Lỗi: {str(e)}. Vui lòng kiểm tra lại định dạng dữ liệu.')
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': f'Có lỗi xảy ra: {str(e)}'})
+            messages.error(request, f'Có lỗi xảy ra: {str(e)}')
     return render(request, 'admin/modal-popup/popup_edit_schedule.html', context)
 
 
@@ -407,8 +578,10 @@ def admin_schedule_get_info(request, id_classroom):
         schedule = Classroom.objects.get(id_classroom=id_classroom)
         if schedule.id_lecturer is None:
             lecturer_name = 'Hiện chưa có giảng viên phụ trách (Vui lòng thêm giảng viên)'
+            lecturer_id = None
         else:
             lecturer_name = schedule.id_lecturer.staff_name
+            lecturer_id = schedule.id_lecturer.id_staff
         schedule_data = {
             'id_classroom': schedule.id_classroom,
             'name': schedule.name,
@@ -418,6 +591,7 @@ def admin_schedule_get_info(request, id_classroom):
             'begin_time': schedule.begin_time,
             'end_time': schedule.end_time,
             'lecturer_name': lecturer_name,
+            'id_lecturer': lecturer_id,
         }
         return JsonResponse({'schedule': schedule_data})
     except Classroom.DoesNotExist:

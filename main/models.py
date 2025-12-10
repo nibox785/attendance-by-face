@@ -69,12 +69,59 @@ class StudentClassDetails(models.Model):
     id_student = models.ForeignKey(StudentInfo, on_delete=models.CASCADE)
 
 
+class ClassSession(models.Model):
+    """Model quản lý từng buổi học - Trung tâm của hệ thống điểm danh"""
+    STATUS_CHOICES = [
+        ('PENDING', 'Chưa bắt đầu'),
+        ('OPEN', 'Đang điểm danh'),
+        ('CLOSED', 'Đã kết thúc'),
+    ]
+    
+    id_session = models.BigAutoField(primary_key=True)
+    id_classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='sessions')
+    session_date = models.DateField()
+    session_number = models.IntegerField()  # Buổi 1, 2, 3...
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    opened_at = models.DateTimeField(null=True, blank=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    opened_by = models.ForeignKey(StaffInfo, on_delete=models.SET_NULL, null=True, blank=True, related_name='opened_sessions')
+    
+    class Meta:
+        unique_together = ['id_classroom', 'session_date']
+        ordering = ['-session_date', '-session_number']
+    
+    def __str__(self):
+        return f"{self.id_classroom.name} - Buổi {self.session_number} ({self.session_date})"
+
+
 class Attendance(models.Model):
+    """Model điểm danh - Liên kết với ClassSession"""
+    STATUS_CHOICES = [
+        (1, 'Vắng'),
+        (2, 'Có mặt'),
+        (3, 'Muộn'),
+    ]
+    
+    METHOD_CHOICES = [
+        ('MANUAL', 'Thủ công'),
+        ('FACE', 'Nhận diện khuôn mặt'),
+    ]
+    
     id_attendance = models.BigAutoField(primary_key=True)
-    check_in_time = models.DateTimeField()
-    attendance_status = models.IntegerField()
-    id_classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True)
+    id_session = models.ForeignKey(ClassSession, on_delete=models.CASCADE, related_name='attendances', null=True, blank=True)
+    id_classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True)  # Giữ lại cho backward compatibility
     id_student = models.ForeignKey('StudentInfo', on_delete=models.CASCADE)
+    check_in_time = models.DateTimeField()
+    attendance_status = models.IntegerField(choices=STATUS_CHOICES)
+    check_in_method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='MANUAL')
+    modified_at = models.DateTimeField(auto_now=True)
+    modified_by = models.ForeignKey(StaffInfo, on_delete=models.SET_NULL, null=True, blank=True, related_name='modified_attendances')
+    
+    class Meta:
+        unique_together = [['id_session', 'id_student']]
+    
+    def __str__(self):
+        return f"{self.id_student.student_name} - {self.get_attendance_status_display()}"
 
 
 class BlogPost(models.Model):

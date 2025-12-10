@@ -56,8 +56,27 @@
 {% endblock %}
 
 {% block js %}
+    <!-- CKEditor CDN -->
+    <script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
     <script src="{% static 'assets/js/manage-notification.js' %}"></script>
     <script>
+        // Initialize CKEditor when modal opens
+        $('#addNotification').on('click', function() {
+            setTimeout(function() {
+                if (!CKEDITOR.instances['id_body']) {
+                    CKEDITOR.replace('id_body', {
+                        height: 300,
+                        toolbar: [
+                            { name: 'basicstyles', items: ['Bold', 'Italic', 'Underline'] },
+                            { name: 'paragraph', items: ['NumberedList', 'BulletedList'] },
+                            { name: 'links', items: ['Link'] },
+                            { name: 'insert', items: ['Image', 'Table'] }
+                        ]
+                    });
+                }
+            }, 200);
+        });
+        
         function confirmDeleteNotification(blog_postID) {
             let deleteUrl = "{% url 'admin_notification_delete' '1' %}".replace('1', blog_postID);
             $('#confirmDeleteButton').attr('href', deleteUrl);

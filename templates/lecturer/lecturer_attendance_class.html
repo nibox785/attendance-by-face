@@ -3,7 +3,12 @@
 {% block content %}
     <div class="card">
         <div class="card-body">
-            <h4 class="card-title">Thời Khóa Biểu</h4>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0">Thời Khóa Biểu</h5>
+                <a href="{% url 'lecturer_session_list' %}" class="btn btn-info btn-sm">
+                    <i class="mdi mdi-format-list-bulleted"></i> Lịch sử điểm danh
+                </a>
+            </div>
         </div>
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
@@ -50,18 +55,12 @@
                     <td class="text-center">{{ classroom.end_time|time:"H:i" }}</td>
                     <td class="text-center">
                         {% if classroom.day_of_week_begin == day_of_week_today %}
-                            <a href="{% url 'lecturer_mark_attendance' classroom.id_classroom %}"
-                               class="btn btn-primary"
-                               target="_self">
-                                Điểm danh bằng thủ công
-                            </a>
-                            <a href="{% url 'lecturer_mark_attendance_by_face' classroom.id_classroom %}"
-                               class="btn btn-primary"
-                               target="_self">
-                                Điểm danh bằng khuôn mặt
+                            <a href="{% url 'lecturer_start_session' classroom.id_classroom %}"
+                               class="btn btn-success btn-sm">
+                                <i class="mdi mdi-play"></i> Bắt đầu điểm danh
                             </a>
                         {% else %}
-                            <button class="btn btn-secondary" disabled>
+                            <button class="btn btn-secondary btn-sm" disabled>
                                 Không phải ngày học
                             </button>
                         {% endif %}

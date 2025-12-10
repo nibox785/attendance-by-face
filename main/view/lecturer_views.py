@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
@@ -8,12 +8,12 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.http import StreamingHttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.shortcuts import render
 from django.views.decorators import gzip
 
 from main.decorators import lecturer_required
-from main.models import StaffInfo, StudentClassDetails
+from main.models import StaffInfo, StudentClassDetails, ClassSession
 from main.src.anti_spoof_predict import AntiSpoofPredict
 from main.src.generate_patches import CropImage
 from main.src.utility import parse_model_name
@@ -334,23 +334,63 @@ def lecturer_list_classroom_view(request):
 
 @lecturer_required
 def lecturer_calculate_attendance_points_view(request, classroom_id):
+    """Xem điểm chuyên cần - TÍNH ĐỘNG dựa trên số buổi học thực tế"""
     classroom = Classroom.objects.get(pk=classroom_id)
     students_in_class = StudentClassDetails.objects.filter(id_classroom=classroom)
     student_per_page = 10
     page_number = request.GET.get('page')
-
+    
+    # Đếm tổng số buổi học ĐÃ ĐÓNG (đã hoàn thành)
+    total_expected_sessions = ClassSession.objects.filter(
+        id_classroom=classroom,
+        status='CLOSED'
+    ).count()
+    
+    # Nếu chưa có buổi nào, báo cảnh báo
+    if total_expected_sessions == 0:
+        messages.warning(request, 'Lớp này chưa có buổi học nào được ghi nhận! Vui lòng mở và đóng buổi điểm danh trước.')
+        total_expected_sessions = 1  # Tránh chia 0
+    
     student_attendance_counts = []
     for student in students_in_class:
-        absent_count = Attendance.objects.filter(id_classroom=classroom, id_student=student.id_student,
-                                                 attendance_status=1).count()
-        present_count = Attendance.objects.filter(id_classroom=classroom, id_student=student.id_student,
-                                                  attendance_status=2).count()
-        late_count = Attendance.objects.filter(id_classroom=classroom, id_student=student.id_student,
-                                               attendance_status=3).count()
+        # Đếm theo session (chính xác hơn)
+        absent_count = Attendance.objects.filter(
+            id_session__id_classroom=classroom,
+            id_session__status='CLOSED',
+            id_student=student.id_student,
+            attendance_status=1
+        ).count()
+        
+        present_count = Attendance.objects.filter(
+            id_session__id_classroom=classroom,
+            id_session__status='CLOSED',
+            id_student=student.id_student,
+            attendance_status=2
+        ).count()
+        
+        late_count = Attendance.objects.filter(
+            id_session__id_classroom=classroom,
+            id_session__status='CLOSED',
+            id_student=student.id_student,
+            attendance_status=3
+        ).count()
 
         total_number_attendance = absent_count + late_count + present_count
         total_attendance_present = late_count + present_count
-        total_attendance_percentage = round((((absent_count * 0) + (late_count * 0.5) + present_count) / 9) * 3, 2)
+        
+        # TÍNH ĐIỂM ĐỘNG: dựa trên số buổi thực tế
+        # Công thức: ((Vắng*0 + Muộn*0.5 + Có mặt*1) / Tổng buổi) * 3 điểm
+        if total_expected_sessions > 0:
+            total_attendance_percentage = round(
+                (((absent_count * 0) + (late_count * 0.5) + present_count) / total_expected_sessions) * 3,
+                2
+            )
+        else:
+            total_attendance_percentage = 0
+        
+        # Quy định vắng tối đa 20% số buổi
+        max_allowed_absence = int(total_expected_sessions * 0.2)
+        is_over_limit = absent_count > max_allowed_absence
 
         student_attendance_counts.append({
             'student': student,
@@ -359,15 +399,247 @@ def lecturer_calculate_attendance_points_view(request, classroom_id):
             'present_count': present_count,
             'total_number_attendance': total_number_attendance,
             'total_attendance_present': total_attendance_present,
-            'total_attendance_percentage': total_attendance_percentage
+            'total_attendance_percentage': total_attendance_percentage,
+            'total_expected_sessions': total_expected_sessions,
+            'is_over_limit': is_over_limit,
+            'max_allowed_absence': max_allowed_absence,
         })
 
-        paginator = Paginator(student_attendance_counts, student_per_page)
-        page = paginator.get_page(page_number)
+    paginator = Paginator(student_attendance_counts, student_per_page)
+    page = paginator.get_page(page_number)
 
     context = {
         'students_in_class': page,
         'classroom': classroom,
+        'total_expected_sessions': total_expected_sessions,
     }
 
     return render(request, 'lecturer/lecturer_calculate_attendance_points.html', context)
+
+
+# ================== QUẢN LÝ BUỔI HỌC (CLASS SESSION) ==================
+
+@lecturer_required
+def lecturer_start_session(request, classroom_id):
+    """Bắt đầu buổi điểm danh - Tạo session và khởi tạo bản ghi Vắng cho tất cả SV"""
+    classroom = get_object_or_404(Classroom, pk=classroom_id)
+    today = date.today()
+    id_lecturer = request.session.get('id_staff')
+    
+    # Kiểm tra có phải ngày học không
+    if classroom.day_of_week_begin != today.isoweekday():
+        messages.error(request, f'Hôm nay không phải ngày học của lớp {classroom.name}!')
+        return redirect('lecturer_attendance')
+    
+    # Kiểm tra đã có session hôm nay chưa
+    existing_session = ClassSession.objects.filter(
+        id_classroom=classroom,
+        session_date=today
+    ).first()
+    
+    if existing_session:
+        if existing_session.status == 'CLOSED':
+            messages.error(request, f'Buổi học hôm nay đã đóng, không thể điểm danh lại!')
+            return redirect('lecturer_attendance')
+        elif existing_session.status == 'OPEN':
+            messages.info(request, f'Buổi học #{existing_session.session_number} đang mở. Tiếp tục điểm danh.')
+            return redirect('lecturer_mark_attendance_session', session_id=existing_session.id_session)
+    
+    # Tính số buổi học (session_number)
+    session_count = ClassSession.objects.filter(id_classroom=classroom).count()
+    
+    # Tạo session mới
+    session = ClassSession.objects.create(
+        id_classroom=classroom,
+        session_date=today,
+        session_number=session_count + 1,
+        status='OPEN',
+        opened_at=datetime.now(),
+        opened_by_id=id_lecturer
+    )
+    
+    # Tạo bản ghi VẮNG cho tất cả sinh viên trong lớp
+    students_in_class = StudentClassDetails.objects.filter(id_classroom=classroom)
+    attendance_records = []
+    for student_detail in students_in_class:
+        attendance_records.append(Attendance(
+            id_session=session,
+            id_classroom=classroom,
+            id_student=student_detail.id_student,
+            check_in_time=datetime.now(),
+            attendance_status=1,  # Vắng
+            check_in_method='MANUAL'
+        ))
+    
+    # Bulk create để tối ưu performance
+    Attendance.objects.bulk_create(attendance_records)
+    
+    messages.success(request, f'✓ Đã mở buổi điểm danh #{session.session_number} - {classroom.name}')
+    return redirect('lecturer_mark_attendance_session', session_id=session.id_session)
+
+
+@lecturer_required
+def lecturer_mark_attendance_session(request, session_id):
+    """Điểm danh thủ công theo session - Cho phép xem và sửa cả khi đã đóng"""
+    session = get_object_or_404(ClassSession, pk=session_id)
+    
+    # Kiểm tra quyền (chỉ giảng viên của lớp mới được điểm danh)
+    id_lecturer = request.session.get('id_staff')
+    if session.id_classroom.id_lecturer_id != id_lecturer:
+        messages.error(request, 'Bạn không có quyền điểm danh lớp này!')
+        return redirect('lecturer_attendance')
+    
+    # ✅ THAY ĐỔI: Cho phép xem khi CLOSED, nhưng không cho sửa (trừ khi reopen)
+    # Đã bỏ kiểm tra session.status == 'CLOSED' để vẫn hiển thị trang
+    
+    attendances = Attendance.objects.filter(id_session=session).select_related('id_student').order_by('id_student__student_name')
+    
+    if request.method == 'POST':
+        # Chỉ cho phép POST khi session OPEN
+        if session.status != 'OPEN':
+            messages.error(request, 'Buổi điểm danh đã đóng! Vui lòng mở lại để chỉnh sửa.')
+            return redirect('lecturer_mark_attendance_session', session_id=session_id)
+        
+        updated_count = 0
+        for attendance in attendances:
+            new_status = request.POST.get(f'attendance_status_{attendance.id_student.id_student}')
+            if new_status and int(new_status) != attendance.attendance_status:
+                attendance.attendance_status = int(new_status)
+                attendance.check_in_time = datetime.now()
+                attendance.check_in_method = 'MANUAL'
+                attendance.modified_by_id = id_lecturer
+                attendance.save()
+                updated_count += 1
+        
+        messages.success(request, f'✓ Cập nhật {updated_count} bản ghi điểm danh thành công!')
+        return redirect('lecturer_mark_attendance_session', session_id=session_id)
+    
+    context = {
+        'session': session,
+        'classroom': session.id_classroom,
+        'attendances': attendances,
+    }
+    return render(request, 'lecturer/lecturer_mark_attendance_session.html', context)
+
+
+@lecturer_required
+def lecturer_mark_attendance_by_face_session(request, session_id):
+    """Điểm danh bằng khuôn mặt theo session"""
+    session = get_object_or_404(ClassSession, pk=session_id)
+    
+    # Kiểm tra quyền
+    id_lecturer = request.session.get('id_staff')
+    if session.id_classroom.id_lecturer_id != id_lecturer:
+        messages.error(request, 'Bạn không có quyền điểm danh lớp này!')
+        return redirect('lecturer_attendance')
+    
+    if session.status == 'CLOSED':
+        messages.error(request, 'Buổi điểm danh đã đóng!')
+        return redirect('lecturer_attendance')
+    
+    attendances = Attendance.objects.filter(id_session=session).select_related('id_student')
+    
+    context = {
+        'session': session,
+        'classroom': session.id_classroom,
+        'attendances': attendances,
+    }
+    return render(request, 'lecturer/lecturer_mark_attendance_by_face_session.html', context)
+
+
+@gzip.gzip_page
+def live_video_feed_session(request, session_id):
+    """Video feed cho điểm danh khuôn mặt theo session"""
+    return StreamingHttpResponse(
+        main(session_id),
+        content_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+@lecturer_required
+def lecturer_close_session(request, session_id):
+    """Đóng buổi điểm danh - Không sửa được nữa"""
+    session = get_object_or_404(ClassSession, pk=session_id)
+    
+    # Kiểm tra quyền
+    id_lecturer = request.session.get('id_staff')
+    if session.id_classroom.id_lecturer_id != id_lecturer:
+        messages.error(request, 'Bạn không có quyền thao tác với lớp này!')
+        return redirect('lecturer_attendance')
+    
+    if session.status != 'OPEN':
+        messages.error(request, 'Buổi điểm danh không ở trạng thái mở!')
+        return redirect('lecturer_attendance')
+    
+    session.status = 'CLOSED'
+    session.closed_at = datetime.now()
+    session.save()
+    
+    # Thống kê
+    total_students = Attendance.objects.filter(id_session=session).count()
+    present_count = Attendance.objects.filter(id_session=session, attendance_status__in=[2, 3]).count()
+    absent_count = Attendance.objects.filter(id_session=session, attendance_status=1).count()
+    
+    messages.success(request, 
+        f'✓ Đã đóng buổi #{session.session_number} - {session.id_classroom.name}<br>'
+        f'Có mặt: {present_count}/{total_students} | Vắng: {absent_count}'
+    )
+    return redirect('lecturer_attendance')
+
+
+@lecturer_required
+def lecturer_reopen_session(request, session_id):
+    """Mở lại buổi điểm danh đã đóng để chỉnh sửa"""
+    session = get_object_or_404(ClassSession, pk=session_id)
+    
+    # Kiểm tra quyền (chỉ giảng viên của lớp)
+    id_lecturer = request.session.get('id_staff')
+    if session.id_classroom.id_lecturer_id != id_lecturer:
+        messages.error(request, 'Bạn không có quyền thao tác với lớp này!')
+        return redirect('lecturer_attendance')
+    
+    if session.status != 'CLOSED':
+        messages.warning(request, 'Buổi điểm danh chưa đóng, không cần mở lại!')
+        return redirect('lecturer_mark_attendance_session', session_id=session_id)
+    
+    # Mở lại session
+    session.status = 'OPEN'
+    session.closed_at = None
+    session.save()
+    
+    messages.success(request, 
+        f'✓ Đã mở lại buổi #{session.session_number} - {session.id_classroom.name}. '
+        f'Bạn có thể chỉnh sửa điểm danh.'
+    )
+    return redirect('lecturer_mark_attendance_session', session_id=session_id)
+
+
+@lecturer_required
+def lecturer_session_list(request):
+    """Đánh sách tất cả các buổi học của giảng viên"""
+    id_lecturer = request.session.get('id_staff')
+    
+    # Lấy tất cả sessions của giảng viên
+    sessions = ClassSession.objects.filter(
+        id_classroom__id_lecturer_id=id_lecturer
+    ).select_related('id_classroom').order_by('-session_date', '-session_number')
+    
+    # Thống kê cho mỗi session
+    session_stats = []
+    for session in sessions:
+        total = Attendance.objects.filter(id_session=session).count()
+        present = Attendance.objects.filter(id_session=session, attendance_status__in=[2, 3]).count()
+        absent = Attendance.objects.filter(id_session=session, attendance_status=1).count()
+        
+        session_stats.append({
+            'session': session,
+            'total': total,
+            'present': present,
+            'absent': absent,
+            'present_percent': round((present / total * 100) if total > 0 else 0, 1)
+        })
+    
+    context = {
+        'session_stats': session_stats,
+    }
+    return render(request, 'lecturer/lecturer_session_list.html', context)

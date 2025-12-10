@@ -1,0 +1,117 @@
+{% extends "lecturer/base_lecturer_dashboard.html" %}
+{% load static %}
+
+{% block css %}
+    <link href="{% static 'assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0">{{ classroom.name }}</h5>
+                    <p class="text-muted mb-0">Buổi #{{ session.session_number }} - {{ session.session_date|date:"d/m/Y" }}</p>
+                    <span class="badge {% if session.status == 'OPEN' %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ session.get_status_display }}
+                    </span>
+                </div>
+                <div>
+                    {% if session.status == 'OPEN' %}
+                    <a href="{% url 'lecturer_close_session' session.id_session %}" 
+                       class="btn btn-danger"
+                       onclick="return confirm('Bạn có chắc muốn đóng buổi điểm danh? Sau khi đóng bạn vẫn có thể mở lại để sửa.')">
+                        <i class="mdi mdi-lock"></i> Đóng buổi điểm danh
+                    </a>
+                    <a href="{% url 'lecturer_mark_attendance_by_face_session' session.id_session %}" 
+                       class="btn btn-primary">
+                        <i class="mdi mdi-face-recognition"></i> Điểm danh bằng khuôn mặt
+                    </a>
+                    {% else %}
+                    <a href="{% url 'lecturer_reopen_session' session.id_session %}" 
+                       class="btn btn-warning"
+                       onclick="return confirm('Bạn có chắc muốn mở lại buổi điểm danh để chỉnh sửa?')">
+                        <i class="mdi mdi-lock-open"></i> Mở lại để chỉnh sửa
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <form method="post" action="">
+                {% csrf_token %}
+                <table class="table table-hover">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-center" width="10%">MSSV</th>
+                            <th width="25%">Họ và tên</th>
+                            <th class="text-center" width="20%">Email</th>
+                            <th class="text-center" width="15%">Thời gian điểm danh</th>
+                            <th class="text-center" width="15%">Phương thức</th>
+                            <th class="text-center" width="15%">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for attendance in attendances %}
+                        <tr class="{% if attendance.attendance_status == 1 %}table-danger{% elif attendance.attendance_status == 3 %}table-warning{% else %}table-success{% endif %}">
+                            <td class="text-center">{{ attendance.id_student.id_student }}</td>
+                            <td>{{ attendance.id_student.student_name }}</td>
+                            <td class="text-center">{{ attendance.id_student.email }}</td>
+                            <td class="text-center">
+                                {% if attendance.attendance_status != 1 %}
+                                    {{ attendance.check_in_time|date:"H:i:s" }}
+                                {% else %}
+                                    <span class="text-muted">---</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge {% if attendance.check_in_method == 'FACE' %}bg-info{% else %}bg-secondary{% endif %}">
+                                    {{ attendance.get_check_in_method_display }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if session.status == 'OPEN' %}
+                                <select class="form-select form-select-sm" 
+                                        name="attendance_status_{{ attendance.id_student.id_student }}">
+                                    <option value="1" {% if attendance.attendance_status == 1 %}selected{% endif %}>
+                                        Vắng
+                                    </option>
+                                    <option value="2" {% if attendance.attendance_status == 2 %}selected{% endif %}>
+                                        Có mặt
+                                    </option>
+                                    <option value="3" {% if attendance.attendance_status == 3 %}selected{% endif %}>
+                                        Muộn
+                                    </option>
+                                </select>
+                                {% else %}
+                                <span class="badge 
+                                    {% if attendance.attendance_status == 1 %}bg-danger
+                                    {% elif attendance.attendance_status == 2 %}bg-success
+                                    {% else %}bg-warning{% endif %}">
+                                    {{ attendance.get_attendance_status_display }}
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">
+                                Chưa có sinh viên nào trong lớp
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                
+                {% if session.status == 'OPEN' %}
+                <div class="card-body text-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="mdi mdi-content-save"></i> Lưu thay đổi
+                    </button>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+{% endblock %}

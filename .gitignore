@@ -28,3 +28,19 @@ Thumbs.db
 *.sql 
 .env 
 secret_key.txt 
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+*.docx
+*.doc
+
+# Reports and logs
+face_data_report.txt
+*.log
+
+# User uploaded face images (keep structure, ignore images)
+main/Dataset/FaceData/*
+!main/Dataset/FaceData/.gitkeep

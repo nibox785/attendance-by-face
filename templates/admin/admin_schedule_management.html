@@ -58,9 +58,9 @@
                         <td class="text-center">{{ schedule.id_lecturer.staff_name }}</td>
                         <td class="text-center">
                             <a href="#" class="btn btn-danger btn-sm mdi mdi-delete" id="deleteSchedule"
-                               onclick="confirmDeleteClassroom({{ schedule.id_classroom }})">Xóa</a>
+                               onclick="confirmDeleteClassroom('{{ schedule.id_classroom }}')">Xóa</a>
                             <a href="#" class="btn btn-primary btn-sm mdi mdi-account-edit"
-                               onclick="editSchedule({{ schedule.id_classroom }})">Sửa</a>
+                               onclick="editSchedule('{{ schedule.id_classroom }}')">Sửa</a>
                         </td>
                     </tr>
                     {% include 'admin/modal-popup/popup_edit_schedule.html' %}
@@ -116,6 +116,13 @@
 {% block js %}
     <script src="{% static 'assets/js/manage-schedule.js' %}"></script>
     <script>
+        // Danh sách giảng viên từ server
+        const lecturers = [
+            {% for lecturer in lecturers %}
+            {id: "{{ lecturer.id_staff }}", name: "{{ lecturer.staff_name }}"}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
         function confirmDeleteClassroom(classroomId) {
             let deleteUrl = "{% url 'admin_schedule_delete' '1' %}".replace('1', classroomId);
             $('#confirmDeleteButton').attr('href', deleteUrl);
@@ -127,6 +134,16 @@
             let id_classroom = classroomId
             let editForm = $('#editScheduleForm');
             editForm.attr('action', "{% url 'admin_schedule_edit' 0 %}".replace('0', id_classroom));
+            
+            // Load danh sách giảng viên vào select
+            let lecturerSelect = $('#id_lecturer');
+            lecturerSelect.empty();
+            lecturerSelect.append('<option value="">-- Chọn giảng viên --</option>');
+            
+            lecturers.forEach(function(lecturer) {
+                lecturerSelect.append('<option value="' + lecturer.id + '">' + lecturer.name + '</option>');
+            });
+            
             $.ajax({
                     type: "GET",
                     url: "{% url 'admin_schedule_get_info' '1' %}".replace('1', id_classroom),
@@ -140,11 +157,44 @@
                         $('#day_of_week_begin').val(data.schedule.day_of_week_begin);
                         $('#begin_time').val(data.schedule.begin_time);
                         $('#end_time').val(data.schedule.end_time);
-                        $('#lecturer_name').val(data.schedule.lecturer_name);
+                        
+                        // Set giá trị cho select dropdown
+                        if (data.schedule.id_lecturer) {
+                            $('#id_lecturer').val(data.schedule.id_lecturer);
+                        }
+                        
                         $('#editScheduleModal').modal('show');
                     },
                 }
             )
         }
+        
+        // Xử lý submit form edit bằng AJAX
+        $(document).ready(function() {
+            $('#editScheduleForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                $.ajax({
+                    type: 'POST',
+                    url: $(this).attr('action'),
+                    data: $(this).serialize(),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $('#editScheduleModal').modal('hide');
+                            // Reload trang để cập nhật bảng
+                            location.reload();
+                        } else {
+                            alert('Lỗi: ' + response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Có lỗi xảy ra: ' + error);
+                    }
+                });
+            });
+        });
     </script>
 {% endblock %}

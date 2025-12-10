@@ -1,0 +1,131 @@
+{% extends "lecturer/base_lecturer_dashboard.html" %}
+{% load static %}
+
+{% block css %}
+    <link href="{% static 'assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.css' %}" rel="stylesheet"/>
+    <style>
+        .session-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .session-card.open {
+            border-left-color: #28a745;
+            background-color: #f0fff4;
+        }
+        .session-card.closed {
+            border-left-color: #6c757d;
+        }
+        .session-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="card-title mb-0">
+                    <i class="mdi mdi-history"></i> Lịch sử điểm danh
+                </h4>
+                <a href="{% url 'lecturer_attendance' %}" class="btn btn-secondary">
+                    <i class="mdi mdi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+
+            {% if session_stats %}
+                <div class="row">
+                    {% for stat in session_stats %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card session-card {% if stat.session.status == 'OPEN' %}open{% else %}closed{% endif %}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h5 class="mb-1">{{ stat.session.id_classroom.name }}</h5>
+                                        <p class="text-muted mb-2">
+                                            Buổi #{{ stat.session.session_number }} - 
+                                            <strong>{{ stat.session.session_date|date:"d/m/Y" }}</strong>
+                                        </p>
+                                        <span class="badge {% if stat.session.status == 'OPEN' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ stat.session.get_status_display }}
+                                        </span>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="mb-2">
+                                            <small class="text-muted">Tỷ lệ có mặt</small>
+                                            <h3 class="mb-0 {% if stat.present_percent >= 80 %}text-success{% elif stat.present_percent >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                                                {{ stat.present_percent }}%
+                                            </h3>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="text-muted small">Tổng SV</div>
+                                        <h5>{{ stat.total }}</h5>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-success small">Có mặt</div>
+                                        <h5 class="text-success">{{ stat.present }}</h5>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-danger small">Vắng</div>
+                                        <h5 class="text-danger">{{ stat.absent }}</h5>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'lecturer_mark_attendance_session' stat.session.id_session %}" 
+                                       class="btn btn-sm btn-primary flex-fill">
+                                        <i class="mdi mdi-eye"></i> Xem chi tiết
+                                    </a>
+                                    
+                                    {% if stat.session.status == 'OPEN' %}
+                                    <a href="{% url 'lecturer_mark_attendance_by_face_session' stat.session.id_session %}" 
+                                       class="btn btn-sm btn-info">
+                                        <i class="mdi mdi-face-recognition"></i> Điểm danh
+                                    </a>
+                                    <a href="{% url 'lecturer_close_session' stat.session.id_session %}" 
+                                       class="btn btn-sm btn-danger"
+                                       onclick="return confirm('Đóng buổi điểm danh?')">
+                                        <i class="mdi mdi-lock"></i> Đóng
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'lecturer_reopen_session' stat.session.id_session %}" 
+                                       class="btn btn-sm btn-warning"
+                                       onclick="return confirm('Mở lại buổi điểm danh để chỉnh sửa?')">
+                                        <i class="mdi mdi-lock-open"></i> Mở lại
+                                    </a>
+                                    {% endif %}
+                                </div>
+
+                                {% if stat.session.opened_at %}
+                                <div class="mt-2 text-muted small">
+                                    <i class="mdi mdi-clock-outline"></i> 
+                                    Mở lúc: {{ stat.session.opened_at|date:"H:i d/m/Y" }}
+                                    {% if stat.session.closed_at %}
+                                    | Đóng lúc: {{ stat.session.closed_at|date:"H:i d/m/Y" }}
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="mdi mdi-calendar-blank" style="font-size: 64px; color: #ccc;"></i>
+                    <p class="text-muted mt-3">Chưa có buổi điểm danh nào</p>
+                    <a href="{% url 'lecturer_attendance' %}" class="btn btn-primary">
+                        Bắt đầu điểm danh ngay
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

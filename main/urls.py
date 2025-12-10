@@ -80,13 +80,32 @@ urlpatterns = [
     path('lecturer/profile', lecturer_views.lecturer_profile_view, name='lecturer_profile'),
     path('lecturer/change-password', lecturer_views.lecturer_change_password_view, name='lecturer_change_password'),
     path('lecturer/attendance', lecturer_views.lecturer_attendance_class_view, name='lecturer_attendance'),
+    
+    # Session-based attendance (NEW - Recommended)
+    path('lecturer/session/start/<int:classroom_id>', lecturer_views.lecturer_start_session, 
+         name='lecturer_start_session'),
+    path('lecturer/session/list', lecturer_views.lecturer_session_list,
+         name='lecturer_session_list'),
+    path('lecturer/session/<int:session_id>/attendance', lecturer_views.lecturer_mark_attendance_session,
+         name='lecturer_mark_attendance_session'),
+    path('lecturer/session/<int:session_id>/attendance-by-face', lecturer_views.lecturer_mark_attendance_by_face_session,
+         name='lecturer_mark_attendance_by_face_session'),
+    path('lecturer/session/<int:session_id>/close', lecturer_views.lecturer_close_session,
+         name='lecturer_close_session'),
+    path('lecturer/session/<int:session_id>/reopen', lecturer_views.lecturer_reopen_session,
+         name='lecturer_reopen_session'),
+    path('lecturer/session/<int:session_id>/video-feed', lecturer_views.live_video_feed_session,
+         name='live_video_feed_session'),
+    
+    # Old attendance methods (Backward compatibility - Deprecated)
     path('lecturer/attendance/<int:classroom_id>', lecturer_views.lecturer_mark_attendance,
          name='lecturer_mark_attendance'),
     path('lecturer/attendance-by-face/<int:classroom_id>', lecturer_views.lecturer_mark_attendance_by_face,
          name='lecturer_mark_attendance_by_face'),
+    path('lecturer/live-video-feed2/<int:classroom_id>', lecturer_views.live_video_feed2, name='live_video_feed2'),
+    
     path('lecturer/attendance-history', lecturer_views.lecturer_attendance_history_view,
          name='lecturer_attendance_history'),
-    path('lecturer/live-video-feed2/<int:classroom_id>', lecturer_views.live_video_feed2, name='live_video_feed2'),
     path('lecturer/list-classroom', lecturer_views.lecturer_list_classroom_view,
          name='lecturer_list_classroom'),
     path('lecturer/calculate-attendance-points/<int:classroom_id>',
