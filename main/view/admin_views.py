@@ -33,23 +33,44 @@ from main.models import BlogPost
 from django.views import View
 from django.shortcuts import render, redirect
 
+# ✅ IMPORT CENTRALIZED CONFIG
+try:
+    from main.config import (
+        FACE_DATA_DIR_RELATIVE,
+        FACENET_MODEL_PATH_RELATIVE,
+        CLASSIFIER_MODEL_PATH_RELATIVE,
+        BATCH_SIZE,
+        INPUT_IMAGE_SIZE,
+        MIN_IMAGES_PER_STUDENT,
+        RECOMMENDED_IMAGES_PER_STUDENT,
+    )
+    data_dir = FACE_DATA_DIR_RELATIVE
+    model = FACENET_MODEL_PATH_RELATIVE
+    classifier_filename = CLASSIFIER_MODEL_PATH_RELATIVE
+    batch_size = BATCH_SIZE
+    image_size = INPUT_IMAGE_SIZE
+    min_nrof_images_per_class = MIN_IMAGES_PER_STUDENT
+    max_images = RECOMMENDED_IMAGES_PER_STUDENT
+except ImportError:
+    # Fallback config
+    data_dir = 'main/Dataset/FaceData/processed'
+    model = 'main/Models/20180402-114759.pb'
+    classifier_filename = 'main/Models/facemodel.pkl'
+    batch_size = 90
+    image_size = 160
+    min_nrof_images_per_class = 20
+    max_images = 300
+
 color = (255, 0, 0)
 thickness = 2
-max_images = 300
 device_id = 0
 CAPTURE_STATUS = 0  # Đặt giá trị ban đầu cho biến toàn cục
 
 TRAIN_STATUS = 0
 mode = 'TRAIN'  # Change to 'TRAIN' to train the classifier
-data_dir = 'main/Dataset/FaceData/processed'
-model = 'main/Models/20180402-114759.pb'
-classifier_filename = 'main/Models/facemodel.pkl'
 use_split_dataset = False
 
-batch_size = 90
-image_size = 160
 seed = 666
-min_nrof_images_per_class = 20
 nrof_train_images_per_class = 10
 
 
@@ -174,15 +195,24 @@ def admin_student_management_view(request):
 @admin_required
 def admin_student_add(request):
     if request.method == 'POST':
+        print("=" * 80)
+        print("🔧 ADMIN STUDENT ADD - DEBUG INFO")
+        print("=" * 80)
+        print(f"📝 Request Method: {request.method}")
+        print(f"📊 POST Data: {dict(request.POST)}")
+        
         try:
             id_student = request.POST['id_student'].strip()
+            print(f"🆔 Student ID: '{id_student}' (length: {len(id_student)})")
             
             # Validation
             if len(id_student) > 10:
+                print(f"❌ VALIDATION FAILED: ID too long ({len(id_student)} > 10)")
                 messages.error(request, f'Mã sinh viên quá dài! Tối đa 10 ký tự (bạn nhập {len(id_student)} ký tự)')
                 return redirect('admin_student_management')
             
             if StudentInfo.objects.filter(id_student=id_student).exists():
+                print(f"❌ VALIDATION FAILED: ID already exists")
                 messages.error(request, f'Mã sinh viên {id_student} đã tồn tại!')
                 return redirect('admin_student_management')
             
@@ -191,8 +221,16 @@ def admin_student_add(request):
             phone = request.POST['phone']
             address = request.POST['address']
             birthday = datetime.strptime(request.POST['birthday'], '%d/%m/%Y').date()
-            PathImageFolder = request.POST['PathImageFolder']
+            # ✅ Tự động xác định đường dẫn ảnh theo config
+            PathImageFolder = request.POST.get('PathImageFolder') or f'main/Dataset/FaceData/processed/{id_student}'
             password = make_password(request.POST['id_student'])
+            
+            print(f"📝 Student Info:")
+            print(f"   Name: {student_name}")
+            print(f"   Email: {email}")
+            print(f"   Phone: {phone}")
+            print(f"   Birthday: {birthday}")
+            print(f"   PathImageFolder: {PathImageFolder}")
             
             student = StudentInfo(
                 id_student=id_student,
@@ -204,10 +242,26 @@ def admin_student_add(request):
                 PathImageFolder=PathImageFolder,
                 password=password
             )
+            
+            print("💾 Calling student.save()...")
             student.save()
+            print("✅ Student saved successfully!")
+            
+            # Verify save
+            verify = StudentInfo.objects.filter(id_student=id_student).first()
+            if verify:
+                print(f"🔍 VERIFICATION: Student found in DB - {verify.student_name}")
+            else:
+                print("⚠️ WARNING: Student NOT found in DB after save!")
+            
             messages.success(request, 'Thêm sinh viên thành công.')
+            print("=" * 80)
         except Exception as e:
+            print(f"❌ EXCEPTION: {str(e)}")
+            import traceback
+            traceback.print_exc()
             messages.error(request, f'Lỗi: {str(e)}')
+            print("=" * 80)
         
         return redirect('admin_student_management')
     return render(request, 'admin/modal-popup/popup_add_student.html')
@@ -280,8 +334,8 @@ def admin_student_capture(request, id_student):
 def admin_student_delete(request, id_student):
     StudentInfo.objects.filter(id_student=id_student).delete()
 
-    # Directory to check for existence and delete
-    folder_path = f"./main/Dataset/FaceData/processed/{id_student}"
+    # ✅ FIX: Remove leading "./" for consistency
+    folder_path = f"main/Dataset/FaceData/processed/{id_student}"
 
     # Check if the directory exists
     if os.path.exists(folder_path) and os.path.isdir(folder_path):
@@ -687,7 +741,8 @@ def capture(id, request):
     thickness = 2  # Thickness of the rectangle
     model_test = AntiSpoofPredict(device_id)  # Define the AntiSpoofPredict object (assumed to be a valid class)
     capture = cv2.VideoCapture(0)  # Capture from camera at index 2 (can be adjusted)
-    output_dir = f"./main/Dataset/FaceData/processed/{id}"
+    # ✅ FIX: Remove leading "./" for consistency
+    output_dir = f"main/Dataset/FaceData/processed/{id}"
     os.makedirs(output_dir, exist_ok=True)
     while image_count < 300:
         ret, frame = capture.read()
@@ -735,7 +790,8 @@ def split_dataset(dataset, min_nrof_images_per_class, nrof_train_images_per_clas
 def main():
     global TRAIN_STATUS
     TRAIN_STATUS = 0
-    model = 'main/Models/20180402-114759.pb'
+    # ✅ USE CENTRALIZED CONFIG - Do not hardcode model path
+    model_path = FACENET_MODEL_PATH_RELATIVE
     with tf.Graph().as_default():
         with tf.compat.v1.Session() as sess:
             np.random.seed(seed)
@@ -760,7 +816,7 @@ def main():
 
             # Load the model
             print('Loading feature extraction model')
-            facenet.load_model(model)
+            facenet.load_model(model_path)
 
             # Get input and output tensors
             images_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("input:0")
@@ -803,9 +859,15 @@ def main():
 
 @admin_required
 def train(request):
-    train_result, resuil = main()
-    print(train_result, resuil)
-    return JsonResponse({'train': train_result, 'resuil': resuil})
+    try:
+        train_result, result_msg = main()
+        print(f"Training completed: {train_result}, Message: {result_msg}")
+        return JsonResponse({'train': train_result, 'resuil': result_msg})
+    except Exception as e:
+        print(f"Training error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'train': 0, 'resuil': f'Error: {str(e)}'}, status=500)
 
 
 @admin_required

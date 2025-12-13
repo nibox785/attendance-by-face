@@ -97,12 +97,12 @@ urlpatterns = [
     path('lecturer/session/<int:session_id>/video-feed', lecturer_views.live_video_feed_session,
          name='live_video_feed_session'),
     
-    # Old attendance methods (Backward compatibility - Deprecated)
-    path('lecturer/attendance/<int:classroom_id>', lecturer_views.lecturer_mark_attendance,
-         name='lecturer_mark_attendance'),
-    path('lecturer/attendance-by-face/<int:classroom_id>', lecturer_views.lecturer_mark_attendance_by_face,
-         name='lecturer_mark_attendance_by_face'),
-    path('lecturer/live-video-feed2/<int:classroom_id>', lecturer_views.live_video_feed2, name='live_video_feed2'),
+    # ⚠️ DEPRECATED - Old attendance methods (Backward compatibility only)
+    # path('lecturer/attendance/<int:classroom_id>', lecturer_views.lecturer_mark_attendance,
+    #      name='lecturer_mark_attendance'),
+    # path('lecturer/attendance-by-face/<int:classroom_id>', lecturer_views.lecturer_mark_attendance_by_face,
+    #      name='lecturer_mark_attendance_by_face'),
+    # path('lecturer/live-video-feed2/<int:classroom_id>', lecturer_views.live_video_feed2, name='live_video_feed2'),
     
     path('lecturer/attendance-history', lecturer_views.lecturer_attendance_history_view,
          name='lecturer_attendance_history'),

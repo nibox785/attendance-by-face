@@ -307,18 +307,31 @@
             fetch('/admin/student-management/train')
                 .then(response => response.json())
                 .then(data => {
-                    Swal.fire({
-                        position: 'center',
-                        icon: 'success',
-                        title: data.resuil,
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
+                    // ✅ Kiểm tra train status để hiển thị đúng icon
+                    if (data.train === 1) {
+                        // Training thành công
+                        Swal.fire({
+                            position: 'center',
+                            icon: 'success',
+                            title: 'Training thành công!',
+                            text: data.resuil,
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
 
-                    // Làm mới trang sau khi thành công
-                    setTimeout(function () {
-                        location.reload();
-                    }, 2000);
+                        // Làm mới trang sau khi thành công
+                        setTimeout(function () {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        // Training thất bại
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Lỗi Training',
+                            text: data.resuil,
+                            showConfirmButton: true
+                        });
+                    }
                 })
                 .catch(error => {
                     Swal.fire({

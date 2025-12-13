@@ -1,61 +1,198 @@
 <!doctype html>
 <html lang="vi">
-
 <head>
     {% load static %}
-    <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'assets/fonts/icomoon/style.css' %}">
-    <link rel="stylesheet" href="{% static 'assets/css/owl.carousel.min.css' %}">
-    <!-- Bootstrap CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}">
-    <!-- Style -->
-    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets/images/favicon_uth.png' %}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <title>Đăng nhập sinh viên - UTH</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'assets/images/favicon_uth.png' %}"/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            animation: fadeInUp 0.8s ease;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .login-left {
+            padding: 60px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 35px;
+        }
+        .logo-section img {
+            height: 55px;
+        }
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: #667eea;
+            letter-spacing: 0.5px;
+        }
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 35px;
+            font-size: 15px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 15px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 400;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #008B8B;
+            box-shadow: 0 0 0 3px rgba(0, 139, 139, 0.1);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background: #008B8B;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 139, 139, 0.4);
+            background: #00a0a0;
+        }
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            font-weight: 400;
+            margin-top: 10px;
+            padding: 12px 14px;
+            background: #fef5f5;
+            border-radius: 8px;
+            border-left: 3px solid #e74c3c;
+        }
+        .login-right {
+            background-image: url("{% static 'assets/images/uth_campus.jpg' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 60px 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .login-right img {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .login-container {
+                grid-template-columns: 1fr;
+            }
+            .login-right {
+                display: none;
+            }
+            .login-left {
+                padding: 40px 30px;
+            }
+        }
+    </style>
 </head>
-
 <body>
-<div class="content">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-6 order-md-2">
-                <img src="{% static 'assets/images/undraw_file_sync_ot38.svg' %}" alt="Image" class="img-fluid">
+    <div class="login-container">
+        <div class="login-left">
+            <div class="logo-section">
+                <img src="{% static 'assets/images/favicon_uth.png' %}" alt="UTH Logo">
             </div>
-            <div class="col-md-6 contents">
-                <div class="row justify-content-center">
-                    <div class="col-md-8">
-                        <h3>Cổng thông tin sinh viên</h3>
-                        <div class="mb-4">
-                            <p class="mb-4">Hệ thống quản lý điểm danh</p>
-                        </div>
-                        <form action="#" method="post">
-                            {% csrf_token %}
-                            <div class="form-group first">
-                                <label for="username">Mã số sinh viên</label>
-                                <input type="text" class="form-control" id="id_student" name="id_student">
-                            </div>
-                            <div class="form-group last mb-4">
-                                <label for="password">Mật khẩu</label>
-                                <input type="password" class="form-control" id="password" name="password">
-                            </div>
-                            {% if error_message %}
-                                <p class="text-danger">{{ error_message }}</p>
-                            {% endif %}
-                            <input type="submit" value="Đăng nhập" class="btn text-white btn-block btn-primary">
-                        </form>
-                    </div>
+            <h2>Cổng thông tin sinh viên</h2>
+            <p class="subtitle">Hệ thống quản lý điểm danh - Dành cho sinh viên</p>
+            
+            <form method="post" action="#">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_student"><i class="fas fa-user"></i> Mã số sinh viên</label>
+                    <input type="text" class="form-control" id="id_student" name="id_student" placeholder="Nhập mã số sinh viên" required>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> Mật khẩu</label>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Nhập mật khẩu" required>
+                </div>
+                {% if error_message %}
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i> {{ error_message }}
+                    </div>
+                {% endif %}
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                </button>
+            </form>
+        </div>
+        <div class="login-right">
+            <img src="static/assets/images/background/anh uth.webp" alt="Illustration">
         </div>
     </div>
-</div>
-<script src="{% static 'assets/js/jquery-3.3.1.min.js' %}"></script>
-<script src="{% static 'assets/js/popper.min.js' %}"></script>
-<script src="{% static 'assets/js/bootstrap.min.js' %}"></script>
-<script src="{% static 'assets/js/main.js' %}"></script>
 </body>
-
 </html>

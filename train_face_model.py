@@ -16,21 +16,42 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-# Configuration
-INPUT_IMAGE_SIZE = 160
-FACENET_MODEL_PATH = 'main/Models/20180402-114759.pb'
-OUTPUT_CLASSIFIER_PATH = 'main/Models/facemodel.pkl'
-FACE_DATA_DIR = 'main/Dataset/FaceData'
-MIN_FACE_SIZE = 20
-CONFIDENCE_THRESHOLD = 0.95
+# ✅ IMPORT CENTRALIZED CONFIG
+try:
+    from main.config import (
+        INPUT_IMAGE_SIZE,
+        FACENET_MODEL_PATH_RELATIVE as FACENET_MODEL_PATH,
+        CLASSIFIER_MODEL_PATH_RELATIVE as OUTPUT_CLASSIFIER_PATH,
+        FACE_DATA_DIR_RELATIVE as FACE_DATA_DIR,
+        MTCNN_MIN_FACE_SIZE as MIN_FACE_SIZE,
+        CONFIDENCE_THRESHOLD,
+        MTCNN_THRESHOLDS,
+        MTCNN_SCALE_FACTOR,
+        MTCNN_MARGIN,
+    )
+    print("✓ Loaded config from main.config")
+except ImportError:
+    # Fallback nếu chưa có config.py
+    print("⚠️ Using fallback config (please create main/config.py)")
+    INPUT_IMAGE_SIZE = 160
+    FACENET_MODEL_PATH = 'main/Models/20180402-114759.pb'
+    OUTPUT_CLASSIFIER_PATH = 'main/Models/facemodel.pkl'
+    FACE_DATA_DIR = 'main/Dataset/FaceData/processed'  # ✅ FIX: Added /processed
+    MIN_FACE_SIZE = 20
+    CONFIDENCE_THRESHOLD = 0.95
+    MTCNN_THRESHOLDS = [0.6, 0.7, 0.7]
+    MTCNN_SCALE_FACTOR = 0.709
+    MTCNN_MARGIN = 44
 
-def load_and_align_data(image_paths, image_size=160, margin=44, gpu_memory_fraction=1.0):
+def load_and_align_data(image_paths, image_size=INPUT_IMAGE_SIZE, margin=None, gpu_memory_fraction=1.0):
     """
     Load và align faces từ images
     """
-    minsize = 20
-    threshold = [0.6, 0.7, 0.7]
-    factor = 0.709
+    if margin is None:
+        margin = MTCNN_MARGIN
+    minsize = MIN_FACE_SIZE
+    threshold = MTCNN_THRESHOLDS
+    factor = MTCNN_SCALE_FACTOR
     
     print('Creating networks and loading parameters')
     with tf.Graph().as_default():

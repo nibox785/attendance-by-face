@@ -16,6 +16,26 @@ import warnings
 import re
 from difflib import SequenceMatcher
 
+# ✅ IMPORT CENTRALIZED CONFIG
+try:
+    from main.config import (
+        INPUT_IMAGE_SIZE,
+        CLASSIFIER_MODEL_PATH_RELATIVE as CLASSIFIER_PATH,
+        FACENET_MODEL_PATH_RELATIVE as FACENET_MODEL_PATH,
+        ANTI_SPOOF_MODEL_DIR,
+        LATE_THRESHOLD_MINUTES,
+        CONFIDENCE_THRESHOLD,
+    )
+    print("✓ reg.py loaded config from main.config")
+except ImportError:
+    print("⚠️ reg.py using fallback config")
+    INPUT_IMAGE_SIZE = 160
+    CLASSIFIER_PATH = 'main/Models/facemodel.pkl'
+    FACENET_MODEL_PATH = 'main/Models/20180402-114759.pb'
+    ANTI_SPOOF_MODEL_DIR = "main/resources/anti_spoof_models"
+    LATE_THRESHOLD_MINUTES = 15
+    CONFIDENCE_THRESHOLD = 0.80
+
 # ...
 
 # Trước khi gọi hàm có cảnh báo
@@ -138,11 +158,12 @@ def insert_attendance(session_id, student_id):
     current_time = datetime.now()
     begin_time = classroom.begin_time
     
-    # Tính toán trạng thái (Muộn nếu check-in > 15 phút sau giờ bắt đầu)
+    # ✅ USE CONFIG: Tính toán trạng thái (Muộn nếu check-in > LATE_THRESHOLD_MINUTES sau giờ bắt đầu)
     time_difference = (datetime.combine(datetime.now(), current_time.time())
                        - datetime.combine(datetime.now(), begin_time))
     
-    if time_difference.total_seconds() > 900:  # 15 phút = 900 giây
+    late_seconds = LATE_THRESHOLD_MINUTES * 60  # Convert to seconds
+    if time_difference.total_seconds() > late_seconds:
         attendance_status = 3  # Muộn
         status_text = "Muộn"
     else:
@@ -250,9 +271,8 @@ def main(session_id):
         session_id: ID của buổi học (ClassSession) thay vì id_classroom
     """
 
-    INPUT_IMAGE_SIZE = 160
-    CLASSIFIER_PATH = 'main/Models/facemodel.pkl'
-    FACENET_MODEL_PATH = 'main/Models/20180402-114759.pb'
+    # ✅ USE CONFIG CONSTANTS
+    # Đã import từ đầu file
 
     # Kiểm tra model tồn tại
     if not os.path.exists(CLASSIFIER_PATH):
@@ -261,11 +281,11 @@ def main(session_id):
         print("=" * 70)
         print("File không tồn tại:", CLASSIFIER_PATH)
         print("\n📋 HƯỚNG DẪN KHẮC PHỤC:")
-        print("1. Thêm ảnh sinh viên vào: main/Dataset/FaceData/MSSV/")
+        print("1. Thêm ảnh sinh viên vào: main/Dataset/FaceData/processed/MSSV/")
         print("   - Mỗi sinh viên cần 20-30 ảnh")
         print("2. Chạy lệnh: python train_face_model.py")
         print("3. Sau khi train xong, quay lại điểm danh")
-        print("\n📖 Chi tiết: Đọc file SETUP_FACE_RECOGNITION.md")
+        print("\n📖 Chi tiết: Đọc file docs/HUONG_DAN_TRAINING_FACE.md")
         print("=" * 70)
         
         # Tạo frame thông báo lỗi

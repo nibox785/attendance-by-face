@@ -51,3 +51,8 @@
     });
     
 })(jQuery);
+
+$(function() {
+    "use strict";
+    $.SidebarMenu.init();
+});

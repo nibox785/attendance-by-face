@@ -2,40 +2,40 @@
 {% load static %}
 
 {% block content %}
-<div class="card">
+<div class="card shadow-sm">
     <div class="card-body">
-        <h3 class="card-title mb-4">Điểm quá trình</h3>
-        <p class="text-muted">Ngày {{ current_date|date:"d/m/Y" }}</p>
+        <h3 class="card-title mb-2">Điểm quá trình</h3>
+        <p class="text-muted mb-4">Ngày {{ current_date|date:"d/m/Y" }}</p>
         
         {% if attendance_scores %}
         <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Tên lớp</th>
-                        <th class="text-center">Tổng buổi</th>
-                        <th class="text-center">Có mặt</th>
-                        <th class="text-center">Muộn</th>
-                        <th class="text-center">Vắng</th>
-                        <th class="text-center">Điểm CC</th>
+            <table class="table table-hover">
+                <thead>
+                    <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 12px;">Tên lớp</th>
+                        <th class="text-center" style="padding: 12px;">Tổng buổi</th>
+                        <th class="text-center" style="padding: 12px;">Có mặt</th>
+                        <th class="text-center" style="padding: 12px;">Muộn</th>
+                        <th class="text-center" style="padding: 12px;">Vắng</th>
+                        <th class="text-center" style="padding: 12px;">Điểm CC</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for score in attendance_scores %}
-                    <tr>
-                        <td><strong>{{ score.classroom.name }}</strong></td>
-                        <td class="text-center">{{ score.total_number_attendance }}</td>
-                        <td class="text-center">
-                            <span class="badge badge-success">{{ score.present_count }}</span>
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px;"><strong>{{ score.classroom.name }}</strong></td>
+                        <td class="text-center" style="padding: 12px;">{{ score.total_number_attendance }}</td>
+                        <td class="text-center" style="padding: 12px;">
+                            <span style="display: inline-block; min-width: 30px; padding: 4px 8px; background-color: #f8f9fa; border-radius: 4px; font-weight: 500;">{{ score.present_count }}</span>
                         </td>
-                        <td class="text-center">
-                            <span class="badge badge-warning">{{ score.late_count }}</span>
+                        <td class="text-center" style="padding: 12px;">
+                            <span style="display: inline-block; min-width: 30px; padding: 4px 8px; background-color: #f8f9fa; border-radius: 4px; font-weight: 500;">{{ score.late_count }}</span>
                         </td>
-                        <td class="text-center">
-                            <span class="badge badge-danger">{{ score.absent_count }}</span>
+                        <td class="text-center" style="padding: 12px;">
+                            <span style="display: inline-block; min-width: 30px; padding: 4px 8px; background-color: #f8f9fa; border-radius: 4px; font-weight: 500;">{{ score.absent_count }}</span>
                         </td>
-                        <td class="text-center">
-                            <strong>{{ score.total_attendance_percentage }}</strong>
+                        <td class="text-center" style="padding: 12px;">
+                            <strong style="color: #2c3e50; font-size: 1.1em;">{{ score.total_attendance_percentage }}</strong>
                         </td>
                     </tr>
                     {% endfor %}
